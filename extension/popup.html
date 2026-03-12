@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shuck</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body id="popupBody">
+  <div class="container">
+    <header class="header">
+      <div class="header-top">
+        <div class="header-brand">
+          <img src="icons/icon128.png" alt="Shuck" class="popup-logo" />
+          <p class="tagline">Your browsing trail, tagged and searchable</p>
+        </div>
+        <button type="button" id="openDashboardBtn" class="btn-dashboard" title="Open full dashboard in new tab">Dashboard</button>
+      </div>
+      <div class="case-row">
+        <label>Case:</label>
+        <select id="caseSelect"></select>
+        <button type="button" id="addCaseBtn" class="btn-icon" title="New case">+</button>
+      </div>
+      <div class="toggle-row toggle-row-capture">
+        <label class="toggle-label toggle-label-capture">
+          <input type="checkbox" id="captureToggle" />
+          <span class="toggle-capture-text">Capture visits</span>
+          <span id="captureToggleStatus" class="toggle-capture-status" aria-live="polite">On</span>
+        </label>
+        <button type="button" id="settingsBtn" class="btn-icon" title="Settings">⚙</button>
+      </div>
+    </header>
+
+    <div id="settingsPanel" class="settings-panel hidden">
+      <h3>Settings</h3>
+      <label>Ignore list (one domain or URL per line; these won’t be logged or captured):</label>
+      <textarea id="ignoreListInput" class="input-custom" rows="4" placeholder="e.g. facebook.com&#10;https://twitter.com"></textarea>
+      <h4 class="settings-sub">Tag library</h4>
+      <p class="settings-hint">All cases use this library when tagging captures. Add tags here; they appear as suggestions when you add a tag.</p>
+      <div id="tagListList" class="tag-list-list"></div>
+      <button type="button" id="addTagToList" class="btn btn-secondary">+ Add to library</button>
+      <h4 class="settings-sub">Highlights</h4>
+      <p class="settings-hint">Define text or regex patterns. Matches are highlighted in the Source tab of each capture and optionally on the live page. Regex uses JavaScript RegExp (ECMAScript); uncheck “Regex” for literal text.</p>
+      <div id="selectorsList" class="selectors-list"></div>
+      <button type="button" id="addSelector" class="btn btn-secondary">+ Add pattern</button>
+      <button type="button" id="saveSettings" class="btn btn-primary">Save</button>
+    </div>
+
+    <div id="mainArea" class="main-area">
+    <div class="tabs">
+      <button class="tab active" data-tab="captures">Captures</button>
+      <button class="tab" data-tab="stats">Stats</button>
+      <button class="tab" data-tab="todo">Todo</button>
+    </div>
+
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="Search URL, title, notes..." class="search input-custom" />
+      <select id="tagFilter" class="tag-filter input-custom" title="Filter by tag">
+        <option value="">All tags</option>
+      </select>
+      <div class="dropdown-wrap">
+        <button type="button" id="captureBtn" class="btn btn-primary">Capture this page ▾</button>
+        <div id="captureDropdown" class="popup-dropdown hidden">
+          <button type="button" class="popup-dropdown-option" data-capture="full">Capture this page</button>
+          <button type="button" class="popup-dropdown-option" data-capture="screenshot">Screenshot this page</button>
+          <button type="button" class="popup-dropdown-option" data-capture="screenshot-annotate">Screenshot with annotation</button>
+        </div>
+      </div>
+      <div class="dropdown-wrap">
+        <button type="button" id="exportBtn" class="btn btn-secondary">Export ▾</button>
+        <div id="exportDropdown" class="popup-dropdown hidden">
+          <button type="button" class="popup-dropdown-option" data-format="json">JSON (Full Import)</button>
+          <button type="button" class="popup-dropdown-option" data-format="html">HTML (Audit Report)</button>
+          <button type="button" class="popup-dropdown-option" data-format="csv">CSV (Captures Table)</button>
+          <button type="button" class="popup-dropdown-option" data-format="docx">Word (Report)</button>
+        </div>
+      </div>
+      <button type="button" id="importBtn" class="btn btn-secondary">Import</button>
+      <input type="file" id="importFile" accept=".json" class="hidden" />
+      <button type="button" id="highlightOnPage" class="btn btn-secondary" data-highlight-state="off" title="Toggle selector highlights on this page">Highlight: Off</button>
+    </div>
+
+    <section id="panel-captures" class="panel active">
+      <div class="captures-toolbar">
+        <label class="preview-toggle-label"><input type="checkbox" id="showPreviews" checked /> Show previews</label>
+        <label class="captures-sort-label">Sort:</label>
+        <select id="captureSort" class="input-custom captures-sort-select" title="Sort captures">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="favourites">Favourites first</option>
+        </select>
+      </div>
+      <ul id="capturesList" class="list"></ul>
+      <p id="capturesEmpty" class="empty hidden">No snapshots yet. Right‑click a page → Shuck: Capture, or use the button above.</p>
+    </section>
+
+    <section id="panel-stats" class="panel">
+      <div id="statsContent" class="stats-content"></div>
+    </section>
+
+    <section id="panel-todo" class="panel">
+      <ul id="todoList" class="list todo-list"></ul>
+      <div class="todo-add">
+        <input type="text" id="todoInput" class="input-custom" placeholder="Add task..." />
+        <button type="button" id="todoAdd" class="btn btn-primary">Add</button>
+      </div>
+    </section>
+    </div>
+
+    <footer class="footer">
+      <span id="stats"></span>
+    </footer>
+  </div>
+
+  <div id="detailModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="detailTitle">Capture detail</h2>
+        <button type="button" id="detailClose" class="btn-icon">×</button>
+      </div>
+      <div class="detail-tabs">
+        <button type="button" class="detail-tab active" data-detail-tab="info">Info</button>
+        <button type="button" class="detail-tab" data-detail-tab="tech">Tech</button>
+        <button type="button" class="detail-tab" data-detail-tab="source">Source</button>
+        <button type="button" class="detail-tab" data-detail-tab="data">Data</button>
+        <button type="button" class="detail-tab" data-detail-tab="notes">Notes</button>
+      </div>
+      <div id="detailInfo" class="detail-panel active">
+        <p class="detail-url" id="detailUrl"></p>
+        <p class="detail-meta" id="detailMeta"></p>
+        <div id="detailPreview" class="detail-preview"></div>
+      </div>
+      <div id="detailTech" class="detail-panel">
+        <h4 class="detail-sub">Page technologies</h4>
+        <ul id="detailTechnologies" class="tech-list"></ul>
+        <h4 class="detail-sub">Server headers</h4>
+        <dl id="detailHeaders" class="headers-list"></dl>
+      </div>
+      <div id="detailSource" class="detail-panel">
+        <pre id="detailSourceContent"></pre>
+      </div>
+      <div id="detailData" class="detail-panel">
+        <h4>Emails</h4>
+        <ul id="detailEmails"></ul>
+        <h4>IP addresses</h4>
+        <ul id="detailIps"></ul>
+      </div>
+      <div id="detailNotes" class="detail-panel">
+        <textarea id="detailNotesInput" class="input-custom" rows="4" placeholder="Add or edit notes... (Shift+Enter to save)"></textarea>
+        <div class="detail-tags" id="detailTags"></div>
+        <h4 class="detail-sub">Attachments</h4>
+        <ul id="detailAttachments" class="detail-attachments"></ul>
+        <div class="attachment-add">
+          <input type="text" id="attachmentUrl" class="input-custom" placeholder="URL or name" />
+          <button type="button" id="attachmentAdd" class="btn btn-secondary">Add</button>
+        </div>
+        <label class="important-label"><input type="checkbox" id="detailImportant" /> Mark important</label>
+        <button type="button" id="detailSave" class="btn btn-primary">Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="addTagModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title">Tag / comment</h3>
+      <p class="tag-picker-hint">Select a tag or type your own:</p>
+      <div id="addTagPickerList" class="tag-picker-list"></div>
+      <div class="tag-picker-new">
+        <input type="text" id="addTagNewInput" class="input-custom" placeholder="Type a new tag..." autocomplete="off" />
+        <button type="button" id="addTagConfirm" class="btn btn-primary">Add tag</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="addTagCancel" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="addTagToListModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title">Add to tag library</h3>
+      <p class="tag-picker-hint">Pick a default or type your own:</p>
+      <div id="addTagToListPickerList" class="tag-picker-list"></div>
+      <div class="tag-picker-new">
+        <input type="text" id="addTagToListInput" class="input-custom" placeholder="Type a new tag..." autocomplete="off" />
+        <button type="button" id="addTagToListConfirm" class="btn btn-primary">Add</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="addTagToListCancel" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="newCaseModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title">New case</h3>
+      <input type="text" id="newCaseName" class="input-custom" placeholder="Case name" />
+      <div class="modal-actions">
+        <button type="button" id="newCaseCancel" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="newCaseOk" class="btn btn-primary">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="messageModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title" id="messageModalTitle">Notice</h3>
+      <p id="messageModalBody" class="message-modal-body"></p>
+      <div class="modal-actions">
+        <button type="button" id="messageModalOk" class="btn btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="promptModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title" id="promptModalTitle">Input</h3>
+      <label class="account-field-label" id="promptModalLabel"></label>
+      <input type="text" id="promptModalInput" class="input-custom" placeholder="" autocomplete="off" />
+      <div class="modal-actions">
+        <button type="button" id="promptModalCancel" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="promptModalOk" class="btn btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="confirmModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title" id="confirmModalTitle">Confirm</h3>
+      <p id="confirmModalBody" class="message-modal-body"></p>
+      <div class="modal-actions">
+        <button type="button" id="confirmModalCancel" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="confirmModalOk" class="btn btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shuck – Configuration</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="options-container">
+    <header class="options-header">
+      <img src="icons/icon128.png" alt="Shuck" class="options-logo" />
+      <p class="options-tagline">Configuration</p>
+      <p><a href="#" id="openDashboardFromOptions" class="dashboard-link">Open full dashboard in new tab</a></p>
+    </header>
+
+    <section class="options-section">
+      <h2>Cases</h2>
+      <div class="case-row">
+        <select id="caseSelect"></select>
+        <button type="button" id="addCaseBtn" class="btn btn-primary">+ New case</button>
+      </div>
+    </section>
+
+    <section class="options-section">
+      <h2>Capture</h2>
+      <label class="opt-label">
+        <input type="checkbox" id="captureToggle" />
+        <span>Capture on every page visit (screenshot + HTML for each page)</span>
+      </label>
+      <label class="opt-label">
+        <input type="checkbox" id="saveImagesToggle" checked />
+        <span>Save images in report (include screenshots in exports)</span>
+      </label>
+    </section>
+
+    <section class="options-section">
+      <h2>Theme</h2>
+      <div class="theme-row">
+        <label>Preset:</label>
+        <select id="themeSelect">
+          <option value="purple">Purple</option>
+          <option value="teal">Teal</option>
+          <option value="blue">Blue</option>
+          <option value="slate">Slate</option>
+          <option value="custom">Custom colour</option>
+        </select>
+      </div>
+      <div class="theme-color-wrap">
+        <label for="themeColorPicker">Pick colour (circle):</label>
+        <input type="color" id="themeColorPicker" value="#6b21a8" title="Open colour picker" />
+      </div>
+    </section>
+
+    <section class="options-section">
+      <h2>Ignore list</h2>
+      <p class="opt-hint">One domain or URL per line. These sites won’t be captured.</p>
+      <textarea id="ignoreListInput" rows="6" placeholder="e.g. facebook.com"></textarea>
+    </section>
+
+    <section class="options-section">
+      <h2>Highlight selectors</h2>
+      <p class="opt-hint">Text or regex patterns. Matches are highlighted in the Source tab and on the live page. <strong>Regex:</strong> JavaScript <code>RegExp</code> (ECMAScript). Uncheck “Regex” for literal text; check it for regex (e.g. <code>\bword\b</code>, <code>@\w+</code>, <code>#[a-zA-Z0-9_]+</code>). Case-insensitive.</p>
+      <div id="selectorsList" class="selectors-list"></div>
+      <button type="button" id="addSelector" class="btn btn-secondary">+ Add pattern</button>
+    </section>
+  </div>
+
+  <div id="newCaseModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title">New case</h3>
+      <input type="text" id="newCaseName" class="input-custom" placeholder="Case name" value="New case" />
+      <div class="modal-actions">
+        <button type="button" id="newCaseCancel" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="newCaseOk" class="btn btn-primary">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="messageModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title" id="messageModalTitle">Notice</h3>
+      <p id="messageModalBody" class="message-modal-body"></p>
+      <div class="modal-actions">
+        <button type="button" id="messageModalOk" class="btn btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

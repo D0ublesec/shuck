@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shuck Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body id="dashboardBody">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <img src="icons/icon128.png" alt="Shuck" class="sidebar-logo" />
+      <p class="sidebar-tagline">Dashboard</p>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" data-panel="captures">Captures</a>
+      <a href="#" class="nav-item" data-panel="images">Images</a>
+      <a href="#" class="nav-item" data-panel="stats">Stats</a>
+      <a href="#" class="nav-item" data-panel="todo">Todo</a>
+      <a href="#" class="nav-item" data-panel="accounts">Accounts</a>
+      <a href="#" class="nav-item" data-panel="people">People</a>
+      <a href="#" class="nav-item" data-panel="groups">Groups</a>
+      <a href="#" class="nav-item" data-panel="graph">Graph</a>
+      <a href="#" class="nav-item" data-panel="config">Configuration</a>
+    </nav>
+    <div class="sidebar-footer">
+      <p class="sidebar-hint">To capture a page, use the Shuck icon on that page or right‑click → Shuck: Capture.</p>
+      <p class="sidebar-hint"><button type="button" id="sidebarInfoBtn" class="btn-link">ℹ How to use Shuck</button></p>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <label>Case:</label>
+        <select id="caseSelect" class="input-custom"></select>
+        <button type="button" id="addCaseBtn" class="btn btn-secondary">+ Case</button>
+        <label class="topbar-toggle topbar-capture-toggle">
+          <input type="checkbox" id="captureToggle" />
+          <span class="topbar-capture-label">Capture on visit</span>
+          <span id="captureToggleStatus" class="topbar-capture-status" aria-live="polite">On</span>
+        </label>
+      </div>
+      <div class="topbar-right">
+        <button type="button" id="infoBtn" class="btn btn-secondary" title="Guidance and how to use Shuck">ℹ Info</button>
+        <button type="button" id="refreshBtn" class="btn btn-secondary" title="Reload captures and stats"><span class="refresh-icon" aria-hidden="true">↻</span> Refresh</button>
+        <input type="search" id="search" class="input-custom search" placeholder="Search..." />
+        <select id="tagFilter" class="input-custom tag-filter" title="Filter by tag">
+          <option value="">All tags</option>
+        </select>
+        <div class="export-dropdown-wrap">
+          <button type="button" id="exportBtn" class="btn btn-secondary">Export ▾</button>
+          <div id="exportDropdown" class="export-dropdown hidden">
+            <button type="button" class="export-option" data-format="json">JSON (Full Import)</button>
+            <button type="button" class="export-option" data-format="html">HTML (Audit Report)</button>
+            <button type="button" class="export-option" data-format="csv">CSV (Captures Table)</button>
+            <button type="button" class="export-option" data-format="docx">Word (Report)</button>
+            <button type="button" class="export-option" data-format="obsidian">Obsidian (Vault)</button>
+          </div>
+        </div>
+        <button type="button" id="importBtn" class="btn btn-secondary" title="Import from a previously exported JSON file">Import</button>
+        <input type="file" id="importFile" accept=".json,application/json" class="hidden" />
+        <button type="button" id="highlightOnPage" class="btn btn-secondary" data-highlight-state="off" title="Toggle selector highlights on the target page">Highlight: Off</button>
+        <button type="button" id="colorSchemeToggle" class="btn btn-secondary btn-icon" title="Switch to dark mode" aria-label="Toggle light/dark mode"><span id="colorSchemeToggleIcon" aria-hidden="true">☽</span></button>
+      </div>
+    </header>
+
+    <section id="panel-captures" class="panel active">
+      <div class="panel-head">
+        <h2>Captures</h2>
+        <span id="statsSummary" class="stats-summary"></span>
+      </div>
+      <p class="panel-hint">Full snapshots (screenshot + HTML) you took or that were taken automatically. Use the Shuck icon or right‑click → Capture to add.</p>
+      <div class="captures-toolbar">
+        <label class="preview-toggle-label"><input type="checkbox" id="showPreviews" checked /> Show previews</label>
+        <label class="captures-sort-label">Sort:</label>
+        <select id="captureSort" class="input-custom captures-sort-select" title="Sort captures">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="favourites">Favourites first</option>
+        </select>
+      </div>
+      <ul id="capturesList" class="list list-lg"></ul>
+      <p id="capturesEmpty" class="empty hidden">No captures yet. Use the Shuck icon on a page or right‑click → Shuck: Capture.</p>
+    </section>
+
+    <section id="panel-stats" class="panel">
+      <div class="panel-head"><h2>Stats</h2></div>
+      <div id="statsContent" class="stats-content stats-content-lg"></div>
+      <h3 class="stats-sites-heading">Sites</h3>
+      <p class="panel-hint">Domains that have been captured and how many URLs per domain.</p>
+      <ul id="sitesList" class="list list-lg sites-list"></ul>
+      <p id="sitesEmpty" class="empty hidden">No sites captured yet.</p>
+    </section>
+
+    <section id="panel-accounts" class="panel">
+      <div class="panel-head"><h2>Accounts</h2></div>
+      <p class="panel-hint">Store usernames, emails and passwords for sites or services. Tag accounts to find them in the graph.</p>
+      <div class="accounts-toolbar">
+        <button type="button" id="addAccountBtn" class="btn btn-primary">+ Add account</button>
+      </div>
+      <ul id="accountsList" class="list list-lg accounts-list"></ul>
+      <p id="accountsEmpty" class="empty hidden">No accounts yet. Click “Add account” to add one.</p>
+    </section>
+
+    <section id="panel-people" class="panel">
+      <div class="panel-head"><h2>People</h2></div>
+      <p class="panel-hint">People you track. Link them to accounts in the Accounts section and to groups.</p>
+      <div class="people-toolbar">
+        <button type="button" id="addPersonBtn" class="btn btn-primary">+ Add person</button>
+      </div>
+      <ul id="peopleList" class="list list-lg people-list"></ul>
+      <p id="peopleEmpty" class="empty hidden">No people yet. Click "Add person" to add one.</p>
+    </section>
+
+    <section id="panel-groups" class="panel">
+      <div class="panel-head"><h2>Groups</h2></div>
+      <p class="panel-hint">Groups can represent threat actor groups, organisations, or other entities. Link people and other groups to each group.</p>
+      <div class="groups-toolbar">
+        <button type="button" id="addGroupBtn" class="btn btn-primary">+ Add group</button>
+      </div>
+      <ul id="groupsList" class="list list-lg groups-list"></ul>
+      <p id="groupsEmpty" class="empty hidden">No groups yet. Click "Add group" to add one.</p>
+    </section>
+
+    <section id="panel-images" class="panel">
+      <div class="panel-head"><h2>Images</h2></div>
+      <p class="panel-hint">Image-only captures: right‑click page → Shuck: Save screenshot (saves to case), or Shuck: Screenshot with annotation (annotate then save to case); or right‑click image → Shuck: Annotate this image. Full page snapshots are in Captures.</p>
+      <ul id="imagesList" class="list list-lg images-list"></ul>
+      <p id="imagesEmpty" class="empty hidden">No image captures yet.</p>
+    </section>
+
+    <section id="panel-graph" class="panel panel-graph">
+      <div class="panel-head"><h2>Graph</h2></div>
+      <div id="graphFilterSection" class="graph-filter-section">
+        <div class="graph-filter-main">
+          <div class="graph-filter-header">
+            <span class="graph-filter-title">Filter</span>
+            <span id="graphFilterBadge" class="graph-filter-badge hidden" aria-label="Filter active">On</span>
+          </div>
+          <div id="graphFilterChips" class="graph-filter-chips"></div>
+          <div id="graphFilterRowKeywords" class="graph-filter-row graph-filter-row-keywords">
+            <span class="graph-filter-label-inline">Include:</span>
+            <input type="text" id="graphFilterIncludeKeywords" class="input-custom graph-filter-input-inline" placeholder="e.g. login, site.com" />
+            <span class="graph-filter-label-inline graph-filter-label-exclude">Exclude:</span>
+            <input type="text" id="graphFilterExcludeKeywords" class="input-custom graph-filter-input-inline" placeholder="e.g. archive, test" />
+          </div>
+          <div id="graphFilterRowTags" class="graph-filter-row graph-filter-row-tags">
+            <span class="graph-filter-label-inline">Include tags:</span>
+            <div id="graphFilterIncludeTagsList" class="graph-filter-tag-chips"></div>
+            <select id="graphFilterIncludeTagAdd" class="input-custom graph-filter-tag-add" title="Add tag to include">
+              <option value="">+ Add</option>
+            </select>
+            <span class="graph-filter-label-inline graph-filter-label-exclude">Exclude tags:</span>
+            <div id="graphFilterExcludeTagsList" class="graph-filter-tag-chips"></div>
+            <select id="graphFilterExcludeTagAdd" class="input-custom graph-filter-tag-add" title="Add tag to exclude">
+              <option value="">+ Add</option>
+            </select>
+          </div>
+          <div class="graph-filter-actions">
+            <select id="graphFilterSaved" class="input-custom graph-filter-saved-select" title="Saved filter">
+              <option value="">— No saved filter —</option>
+            </select>
+            <button type="button" id="graphFilterLoad" class="btn btn-secondary">Load</button>
+            <button type="button" id="graphFilterSave" class="btn btn-secondary">Save</button>
+            <button type="button" id="graphFilterEdit" class="btn btn-secondary" title="Overwrite selected saved filter with current">Edit</button>
+            <button type="button" id="graphFilterDelete" class="btn btn-secondary" title="Delete selected saved filter">Delete</button>
+            <button type="button" id="graphFilterClear" class="btn btn-secondary graph-filter-clear hidden" title="Clear filter">Clear</button>
+          </div>
+        </div>
+        <div id="graphNodeInfo" class="graph-node-info graph-node-info-help">
+          <p class="graph-node-info-heading">Graph tips</p>
+          <p><strong>Selection:</strong> Shift+click or shift+drag to select nodes; drag one to move all.</p>
+          <p><strong>Links:</strong> Right‑click node: Link / Unlink; or (when multiple selected) Link selected to… / Unlink selected from…. Right‑click an edge to remove that link.</p>
+          <p><strong>View:</strong> Drag background to pan; mousewheel to zoom.</p>
+        </div>
+        <div class="graph-filter-option">
+          <label class="graph-filter-checkbox-label">
+            <input type="checkbox" id="graphSequentialFlow" checked />
+            <span>Sequential flow</span>
+          </label>
+          <span class="graph-filter-option-hint" title="When on: connect all captures in time order (start to end). When off: only same-domain and explicit links.">?</span>
+        </div>
+        <div class="graph-filter-option">
+          <label class="graph-filter-checkbox-label">
+            <input type="checkbox" id="graphDomainLinks" checked />
+            <span>Domain links</span>
+          </label>
+          <span class="graph-filter-option-hint" title="Show same-domain links between captures (when off, only sequential flow and manual links remain).">?</span>
+        </div>
+      </div>
+      <div class="graph-toolbar-actions">
+        <button type="button" id="graphArrangeBtn" class="btn btn-secondary" title="Arrange nodes: same-domain captures together, groups in a row, people under groups, accounts below">Arrange Nodes</button>
+        <button type="button" id="graphNextNodeBtn" class="btn btn-secondary" title="Jump to next node (cycles first → last → first)">Next Node</button>
+      </div>
+      <p id="graphLinkHint" class="graph-link-hint hidden"></p>
+      <div id="graphLinkKey" class="graph-link-key" aria-label="Graph link colour key">
+        <span class="graph-link-key-item" data-type="auto"><span class="graph-link-key-swatch" style="background: var(--graph-edge-auto, #999);"></span> Auto</span>
+        <span class="graph-link-key-item" data-type="domain"><span class="graph-link-key-swatch" style="background: var(--graph-edge-domain, #00E5FF);"></span> Same domain</span>
+        <span class="graph-link-key-item" data-type="manual"><span class="graph-link-key-swatch" style="background: var(--graph-edge-manual, #22c55e);"></span> Manual</span>
+        <span class="graph-link-key-item" data-type="personGroup"><span class="graph-link-key-swatch" style="background: var(--graph-edge-person-group, #2563eb);"></span> Person–group</span>
+        <span class="graph-link-key-item" data-type="groupGroup"><span class="graph-link-key-swatch" style="background: var(--graph-edge-group-group, #7c3aed);"></span> Group–group</span>
+        <span class="graph-link-key-item" data-type="accountPerson"><span class="graph-link-key-swatch" style="background: var(--graph-edge-account-person, #ea580c);"></span> Account–person</span>
+      </div>
+      <div id="graphNodeMenu" class="graph-node-menu hidden">
+        <button type="button" class="graph-node-menu-item graph-node-menu-item-capture-only" data-action="favourite" style="display: none;">★ Favourite</button>
+        <button type="button" class="graph-node-menu-item" data-action="link">Link to...</button>
+        <button type="button" class="graph-node-menu-item" data-action="unlink">Unlink from...</button>
+      </div>
+      <div id="graphContainer" class="graph-container">
+        <svg id="graphSvg" class="graph-svg" viewBox="0 0 800 500"></svg>
+        <div id="graphMinimap" class="graph-minimap" title="Graph overview – click to jump to that area" aria-label="Graph overview – click to jump"></div>
+      </div>
+      <p id="graphEmpty" class="empty hidden">No links yet. Right‑click a node and then click another to link, or open a capture → Links to add links.</p>
+    </section>
+
+    <section id="panel-todo" class="panel">
+      <div class="panel-head"><h2>Todo</h2></div>
+      <div id="todoProgress" class="todo-progress hidden">
+        <div class="todo-progress-bar-wrap"><div id="todoProgressBar" class="todo-progress-bar"></div></div>
+        <span id="todoProgressText" class="todo-progress-text">0%</span>
+      </div>
+      <div class="todo-actions">
+        <button type="button" id="todoLoadTemplate" class="btn btn-secondary">Load OSINT template</button>
+      </div>
+      <div id="todoSections" class="todo-sections"></div>
+      <div class="todo-add">
+        <input type="text" id="todoInput" class="input-custom" placeholder="Add task..." />
+        <select id="todoSectionSelect" class="input-custom todo-section-select" title="Section for new task">
+          <option value="">No section</option>
+        </select>
+        <button type="button" id="todoAdd" class="btn btn-primary">Add</button>
+      </div>
+    </section>
+
+    <section id="panel-config" class="panel">
+      <div class="panel-head"><h2>Configuration</h2></div>
+      <p class="opt-hint config-date-note">Dates and times are shown in your local timezone (with timezone abbreviation, e.g. GMT, PST). Date format in exports and storage is <strong>YYYY-MM-DD</strong> (ISO 8601) so the order is unambiguous.</p>
+      <div class="config-form">
+        <div class="config-block">
+          <h3>Cases</h3>
+          <div class="case-row">
+            <select id="configCaseSelect" class="input-custom"></select>
+            <button type="button" id="configAddCase" class="btn btn-primary">+ New case</button>
+            <button type="button" id="configRenameCase" class="btn btn-secondary" title="Rename selected case">Rename</button>
+            <button type="button" id="configDeleteCase" class="btn btn-secondary" title="Delete selected case (all its data is permanently removed)">Delete case</button>
+          </div>
+        </div>
+        <div class="config-block">
+          <h3>Capture</h3>
+          <label class="opt-label"><input type="checkbox" id="configCaptureToggle" /><span>Capture on every page visit</span></label>
+          <p class="opt-hint">When on, each page you visit is captured (screenshot + HTML). When off, only manual captures (icon or right‑click) are saved.</p>
+          <label class="opt-label"><input type="checkbox" id="configSaveImages" checked /><span>Save images in report</span></label>
+        </div>
+        <div class="config-block">
+          <h3>Storage &amp; privacy</h3>
+          <p class="opt-hint">No capture limit; storage uses the extension’s unlimited storage. You can disable inlining to avoid extra traffic.</p>
+          <label class="opt-label"><input type="checkbox" id="configInlineMedia" checked /><span>Inline media when capturing (SingleFile-style)</span></label>
+          <p class="opt-hint muted" style="margin-top:4px">When on: images and CSS are taken from the page you already loaded (canvas + styleSheets)—no second requests. When off: save raw HTML and screenshot only.</p>
+          <label class="opt-label"><input type="checkbox" id="configHidePrivacyNotices" checked /><span>Hide privacy notices in rendered view (Page tab)</span></label>
+          <p class="opt-hint muted" style="margin-top:4px">When on, cookie banners and consent overlays are hidden in the Page tab and fullscreen so they don’t block the content. Turn off if a page layout breaks.</p>
+        </div>
+        <div class="config-block">
+          <h3>Theme &amp; colours</h3>
+          <label for="configThemePaste">Paste theme colours:</label>
+          <p class="opt-hint">Comma-separated hex colours. Order: accent, tag, favourite border, graph auto, graph manual, person–group, group–group, account–person.</p>
+          <p class="opt-hint"><strong>Full example string (copy and paste):</strong></p>
+          <p class="opt-hint theme-example-block"><code id="configThemeFullExample">#6b21a8,#6b21a8,#dc2626,#999999,#16a34a,#2563eb,#7c3aed,#ea580c</code></p>
+          <div class="theme-paste-row">
+            <input type="text" id="configThemePaste" class="input-custom" placeholder="#6b21a8,#6b21a8,#dc2626,#999999,#16a34a,#2563eb,#7c3aed,#ea580c" />
+            <button type="button" id="configThemePasteApply" class="btn btn-secondary">Apply</button>
+          </div>
+          <div class="theme-reset-row">
+            <button type="button" id="configThemeResetDefaults" class="btn btn-secondary">Reset theme to defaults</button>
+          </div>
+          <label>Preset:</label>
+          <select id="configTheme" class="input-custom">
+            <option value="purple">Purple</option>
+            <option value="teal">Teal</option>
+            <option value="blue">Blue</option>
+            <option value="slate">Slate</option>
+            <option value="custom">Custom colour</option>
+          </select>
+          <div class="theme-color-wrap">
+            <label for="configThemeColorPicker">Accent (when custom):</label>
+            <input type="color" id="configThemeColorPicker" value="#6b21a8" title="Accent colour when preset is Custom" />
+          </div>
+          <div class="theme-color-wrap">
+            <label for="configAccentColor">Accent override (optional):</label>
+            <input type="color" id="configAccentColor" value="#6b21a8" title="Override accent for buttons and links" />
+            <button type="button" id="configAccentColorClear" class="btn btn-secondary">Clear</button>
+          </div>
+          <div class="theme-color-wrap">
+            <label for="configTagColor">Tag colour override (optional):</label>
+            <input type="color" id="configTagColor" value="#6b21a8" title="Override colour for tag pills" />
+            <button type="button" id="configTagColorClear" class="btn btn-secondary">Clear</button>
+          </div>
+          <div class="theme-color-wrap">
+            <label for="configImportantNodeColor">Favourite node border (graph):</label>
+            <input type="color" id="configImportantNodeColor" value="#dc2626" title="Border colour for important/favourite captures in graph" />
+          </div>
+          <div class="theme-color-wrap">
+            <label for="configGraphEdgeColor">Graph link colour (auto):</label>
+            <input type="color" id="configGraphEdgeColor" value="#999999" title="Colour for auto-generated graph links" />
+          </div>
+          <div class="theme-color-wrap">
+            <label for="configGraphEdgeManualColor">Graph link colour (manual):</label>
+            <input type="color" id="configGraphEdgeManualColor" value="#16a34a" title="Colour for manually added graph links (green reserved)" />
+          </div>
+          <div class="theme-color-wrap">
+            <label for="configGraphEdgePersonGroupColor">Graph link colour (person–group):</label>
+            <input type="color" id="configGraphEdgePersonGroupColor" value="#2563eb" title="Colour for person–group connections" />
+          </div>
+          <div class="theme-color-wrap">
+            <label for="configGraphEdgeGroupGroupColor">Graph link colour (group–group):</label>
+            <input type="color" id="configGraphEdgeGroupGroupColor" value="#7c3aed" title="Colour for group–group connections" />
+          </div>
+          <div class="theme-color-wrap">
+            <label for="configGraphEdgeAccountPersonColor">Graph link colour (account–person):</label>
+            <input type="color" id="configGraphEdgeAccountPersonColor" value="#ea580c" title="Colour for account–person connections" />
+          </div>
+          <div class="theme-color-wrap">
+            <label for="configGraphCanvasColor">Graph canvas colour:</label>
+            <input type="color" id="configGraphCanvasColor" value="#d3d3d3" title="Background colour of the graph area" />
+          </div>
+          <div class="theme-color-wrap">
+            <label for="configGraphNodeGroupColor">Graph node colour (groups):</label>
+            <input type="color" id="configGraphNodeGroupColor" value="#4c1d95" title="Background colour for group nodes" />
+          </div>
+          <div class="theme-color-wrap">
+            <label for="configGraphNodePersonColor">Graph node colour (people):</label>
+            <input type="color" id="configGraphNodePersonColor" value="#db2777" title="Background colour for person nodes" />
+          </div>
+          <div class="theme-color-wrap">
+            <label for="configGraphNodeAccountColor">Graph node colour (accounts):</label>
+            <input type="color" id="configGraphNodeAccountColor" value="#fbcfe8" title="Background colour for account nodes" />
+          </div>
+        </div>
+        <div class="config-block">
+          <h3>Appearance</h3>
+          <label for="configColorScheme">Colour scheme:</label>
+          <select id="configColorScheme" class="input-custom">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+          <p class="opt-hint">Light or dark mode for the dashboard, popup, and options page.</p>
+        </div>
+        <div class="config-block">
+          <h3>Tag library</h3>
+          <p class="opt-hint">All cases select tags from this library when tagging captures. Add tags here; they appear as suggestions when you add a tag to a capture.</p>
+          <div id="configTagLibraryList" class="tag-list-list"></div>
+          <button type="button" id="configAddToLibrary" class="btn btn-secondary">+ Add to library</button>
+        </div>
+        <div class="config-block">
+          <h3>Ignore list</h3>
+          <p class="opt-hint">One domain or URL per line. These sites won’t be logged or captured.</p>
+          <textarea id="configIgnoreList" class="input-custom" rows="6" placeholder="e.g. facebook.com"></textarea>
+        </div>
+        <div class="config-block">
+          <h3>Highlights</h3>
+          <p class="opt-hint">Patterns to highlight on the page and in the Source tab. Tags (above) are for labelling and filtering captures in reports.</p>
+          <p class="opt-hint regex-hint"><strong>Regex:</strong> Patterns use JavaScript <code>RegExp</code> (ECMAScript). If <em>Regex</em> is unchecked, the pattern is treated as literal text. If checked, use full regex syntax; matching is case-insensitive. Examples: <code>\bword\b</code> (whole word), <code>@\w+</code> (e.g. @mentions), <code>#[a-zA-Z0-9_]+</code> (hashtags), <code>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}</code> (IPv4), <code>[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}</code> (email).</p>
+          <div id="configSelectorsList" class="selectors-list"></div>
+          <button type="button" id="configAddSelector" class="btn btn-secondary">+ Add pattern</button>
+        </div>
+        <div class="config-block">
+          <h3>Troubleshooting log</h3>
+          <label class="opt-label"><input type="checkbox" id="configTroubleshootLogEnabled" /><span>Enable troubleshooting log</span></label>
+          <p class="opt-hint muted" style="margin-top:4px">When on, capture events (ignore-list hits, skips, successes, failures) are recorded so you can debug why a page wasn’t captured. You can still view and clear existing entries when disabled.</p>
+          <p class="opt-hint">Recent capture events: ignore-list hits, skipped captures, successful captures, and failures.</p>
+          <div id="troubleshootLogList" class="troubleshoot-log-list"></div>
+          <button type="button" id="troubleshootLogClear" class="btn btn-secondary">Clear log</button>
+          <button type="button" id="troubleshootLogRefresh" class="btn btn-secondary">Refresh</button>
+        </div>
+        <div class="config-actions">
+          <button type="button" id="configCancelBtn" class="btn btn-secondary">Cancel</button>
+          <button type="button" id="configSaveBtn" class="btn btn-primary">Save configuration</button>
+        </div>
+        <p class="opt-hint config-save-hint">Changes above are applied only when you click <strong>Save configuration</strong>. Cancel discards unsaved edits and reloads from storage.</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="addTagModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title">Tags</h3>
+      <p class="tag-picker-hint tag-section-label">On this capture:</p>
+      <div id="addTagExistingList" class="tag-existing-list"></div>
+      <p class="tag-picker-hint tag-section-label">Add tag (pick from tag library or type your own):</p>
+      <div id="addTagPickerList" class="tag-picker-list"></div>
+      <div class="tag-picker-new">
+        <input type="text" id="addTagNewInput" class="input-custom" placeholder="Type a new tag..." autocomplete="off" />
+        <label class="tag-add-to-global-label"><input type="checkbox" id="addTagToGlobalList" /> Add to tag library</label>
+        <button type="button" id="addTagConfirm" class="btn btn-primary">Add tag</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="addTagCancel" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="addTagToListModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title" id="addTagToListModalTitle">Add to tag library</h3>
+      <p class="tag-picker-hint">Pick a default or type your own:</p>
+      <div id="addTagToListPickerList" class="tag-picker-list"></div>
+      <div class="tag-picker-new">
+        <input type="text" id="addTagToListInput" class="input-custom" placeholder="Type a new tag..." autocomplete="off" />
+        <button type="button" id="addTagToListConfirm" class="btn btn-primary">Add</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="addTagToListCancel" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="newCaseModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title">New case</h3>
+      <input type="text" id="newCaseName" class="input-custom" placeholder="Case name" />
+      <div class="modal-actions">
+        <button type="button" id="newCaseCancel" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="newCaseOk" class="btn btn-primary">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="accountModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-md">
+      <h3 class="modal-title" id="accountModalTitle">Add account</h3>
+      <label class="account-field-label">Label (optional)</label>
+      <input type="text" id="accountLabel" class="input-custom" placeholder="e.g. Social media, Bank" />
+      <label class="account-field-label">Sites / profiles (one per line)</label>
+      <textarea id="accountSites" class="input-custom account-sites-input" rows="3" placeholder="e.g. twitter.com&#10;facebook.com&#10;linkedin.com"></textarea>
+      <p class="opt-hint">Reused username across many sites? List them here.</p>
+      <label class="account-field-label">Username (optional)</label>
+      <input type="text" id="accountUsername" class="input-custom" placeholder="Username" />
+      <label class="account-field-label">Email (optional)</label>
+      <input type="email" id="accountEmail" class="input-custom" placeholder="email@example.com" />
+      <label class="account-field-label">Password (optional)</label>
+      <div class="account-password-wrap">
+        <input type="password" id="accountPassword" class="input-custom" placeholder="Password" />
+        <label class="account-show-pw"><input type="checkbox" id="accountShowPassword" /> Show</label>
+      </div>
+      <label class="account-field-label">Tags (comma-separated, for graph)</label>
+      <input type="text" id="accountTags" class="input-custom" placeholder="e.g. login, work" />
+      <label class="account-field-label">Person (optional)</label>
+      <select id="accountPerson" class="input-custom" title="Link this account to a person">
+        <option value="">— No person —</option>
+      </select>
+      <div class="account-links-block">
+        <label class="account-field-label">Links (show in graph with direction)</label>
+        <ul id="accountLinksList" class="detail-links-list"></ul>
+        <div class="detail-links-add">
+          <select id="accountLinkTarget" class="input-custom">
+            <option value="">— Select capture or account —</option>
+          </select>
+          <button type="button" id="accountLinkAdd" class="btn btn-secondary">Add link</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="accountCancel" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="accountSave" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="personModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-md">
+      <h3 class="modal-title" id="personModalTitle">Add person</h3>
+      <label class="account-field-label">Name</label>
+      <input type="text" id="personName" class="input-custom" placeholder="Person name" />
+      <label class="account-field-label">Notes (optional)</label>
+      <textarea id="personNotes" class="input-custom" rows="2" placeholder="Notes..."></textarea>
+      <label class="account-field-label">Groups (optional)</label>
+      <p class="opt-hint">Link this person to one or more groups. Use the Groups panel to manage groups.</p>
+      <div id="personGroupsList" class="detail-links-list"></div>
+      <div class="detail-links-add">
+        <select id="personGroupAdd" class="input-custom">
+          <option value="">— Add group —</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="personCancel" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="personSave" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="groupModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-md">
+      <h3 class="modal-title" id="groupModalTitle">Add group</h3>
+      <label class="account-field-label">Name</label>
+      <input type="text" id="groupName" class="input-custom" placeholder="e.g. Threat actor, Organisation name" />
+      <label class="account-field-label">Description (optional)</label>
+      <textarea id="groupDescription" class="input-custom" rows="2" placeholder="Description..."></textarea>
+      <label class="account-field-label">People in this group</label>
+      <div id="groupPeopleList" class="detail-links-list"></div>
+      <div class="detail-links-add">
+        <select id="groupPersonAdd" class="input-custom">
+          <option value="">— Add person —</option>
+        </select>
+      </div>
+      <label class="account-field-label">Linked groups (optional)</label>
+      <p class="opt-hint">Link to other groups (e.g. parent organisation, subsidiaries).</p>
+      <div id="groupGroupsList" class="detail-links-list"></div>
+      <div class="detail-links-add">
+        <select id="groupGroupAdd" class="input-custom">
+          <option value="">— Add group —</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="groupCancel" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="groupSave" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="linkNoteModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title">Link note</h3>
+      <label class="account-field-label">Note about this link (optional)</label>
+      <textarea id="linkNoteInput" class="input-custom" rows="3" placeholder="e.g. References, related to..."></textarea>
+      <div class="modal-actions">
+        <button type="button" id="linkNoteCancel" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="linkNoteSave" class="btn btn-primary">Save link</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="detailModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-lg">
+      <div class="modal-header">
+        <h2 id="detailTitle">Capture detail</h2>
+        <button type="button" id="detailClose" class="btn-icon">×</button>
+      </div>
+      <div class="detail-tabs">
+        <button type="button" class="detail-tab active" data-detail-tab="info">Info</button>
+        <button type="button" class="detail-tab" data-detail-tab="page">Page</button>
+        <button type="button" class="detail-tab" data-detail-tab="tech">Tech</button>
+        <button type="button" class="detail-tab" data-detail-tab="source">Source</button>
+        <button type="button" class="detail-tab" data-detail-tab="data">Data</button>
+        <button type="button" class="detail-tab" data-detail-tab="notes">Notes</button>
+        <button type="button" class="detail-tab" data-detail-tab="links">Links</button>
+      </div>
+      <div id="detailInfo" class="detail-panel active">
+        <p class="detail-url" id="detailUrl"></p>
+        <p class="detail-meta" id="detailMeta"></p>
+        <div id="detailCaptureType" class="detail-type-badges" aria-label="Capture type and flags"></div>
+        <div id="detailInlineFailed" class="detail-inline-failed hidden"></div>
+        <div id="detailPreview" class="detail-preview"></div>
+      </div>
+      <div id="detailPage" class="detail-panel detail-panel-iframe">
+        <div class="detail-page-toolbar">
+          <button type="button" id="detailPageFullscreen" class="btn btn-secondary">Fullscreen</button>
+        </div>
+        <iframe id="detailPageFrame" title="Rendered capture" sandbox="allow-same-origin allow-scripts" class="detail-iframe"></iframe>
+        <p id="detailPageEmpty" class="muted hidden">No HTML saved for this capture.</p>
+      </div>
+      <div id="detailTech" class="detail-panel">
+        <h4 class="detail-sub">Page technologies</h4>
+        <ul id="detailTechnologies" class="tech-list"></ul>
+        <h4 class="detail-sub">Server headers</h4>
+        <dl id="detailHeaders" class="headers-list"></dl>
+      </div>
+      <div id="detailSource" class="detail-panel">
+        <pre id="detailSourceContent"></pre>
+      </div>
+      <div id="detailData" class="detail-panel">
+        <h4>Emails</h4>
+        <ul id="detailEmails"></ul>
+        <h4>IP addresses</h4>
+        <ul id="detailIps"></ul>
+      </div>
+      <div id="detailNotes" class="detail-panel">
+        <textarea id="detailNotesInput" class="input-custom" rows="5" placeholder="Add or edit notes... (Shift+Enter to save)"></textarea>
+        <div class="detail-tags" id="detailTags"></div>
+        <label class="important-label"><input type="checkbox" id="detailImportant" /> Mark important</label>
+        <button type="button" id="detailSave" class="btn btn-primary">Save changes</button>
+      </div>
+      <div id="detailLinks" class="detail-panel">
+        <p class="opt-hint">Link this capture to captures or accounts. Links appear in the Graph view with direction arrows.</p>
+        <ul id="detailLinksList" class="detail-links-list"></ul>
+        <div class="detail-links-add">
+          <select id="detailLinkTarget" class="input-custom">
+            <option value="">— Select capture or account to link —</option>
+          </select>
+          <button type="button" id="detailLinkAdd" class="btn btn-secondary">Add link</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="messageModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title" id="messageModalTitle">Notice</h3>
+      <p id="messageModalBody" class="message-modal-body"></p>
+      <div class="modal-actions">
+        <button type="button" id="messageModalOk" class="btn btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="promptModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title" id="promptModalTitle">Input</h3>
+      <label class="account-field-label" id="promptModalLabel"></label>
+      <input type="text" id="promptModalInput" class="input-custom" placeholder="" autocomplete="off" />
+      <div class="modal-actions">
+        <button type="button" id="promptModalCancel" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="promptModalOk" class="btn btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="infoModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-lg info-modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Shuck – How to use</h3>
+        <button type="button" id="infoModalClose" class="btn-icon" aria-label="Close">×</button>
+      </div>
+      <div id="infoModalBody" class="info-modal-body"></div>
+      <div class="modal-actions">
+        <button type="button" id="infoModalCloseBtn" class="btn btn-primary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="confirmModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title" id="confirmModalTitle">Confirm</h3>
+      <p id="confirmModalBody" class="message-modal-body"></p>
+      <div class="modal-actions">
+        <button type="button" id="confirmModalCancel" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="confirmModalOk" class="btn btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="importDuplicateModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-sm">
+      <h3 class="modal-title" id="importDuplicateModalTitle">Import</h3>
+      <p id="importDuplicateModalBody" class="message-modal-body">A case with the same ID already exists. How do you want to proceed?</p>
+      <div class="modal-actions">
+        <button type="button" id="importDuplicateMerge" class="btn btn-primary">Merge into existing case</button>
+        <button type="button" id="importDuplicateCancel" class="btn btn-secondary">Cancel import</button>
+        <button type="button" id="importDuplicateNewCase" class="btn btn-secondary">Create new case from import</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

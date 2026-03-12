@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Shuck — Your browsing trail, tagged and searchable</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script>
+    (function() {
+      var stored = localStorage.getItem('shuck-theme');
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', stored || (prefersDark ? 'dark' : 'light'));
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="#" class="logo">
+        <img src="../extension/icons/icon128.png" alt="" class="logo-img" width="100" />
+        Shuck
+      </a>
+      <nav class="nav">
+        <a href="#features">Features</a>
+        <a href="#who">Who uses it</a>
+        <a href="#get">Get Shuck</a>
+        <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark mode" title="Toggle light/dark mode">
+          <span class="theme-icon theme-icon-sun" aria-hidden="true">☀</span>
+          <span class="theme-icon theme-icon-moon" aria-hidden="true">🌙</span>
+        </button>
+      </nav>
+      <button class="menu-toggle" aria-label="Menu">☰</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-inner">
+        <img src="../extension/icons/icon128.png" alt="" class="hero-icon" width="156" />
+        <h1>Never lose a page again.</h1>
+        <p class="hero-desc">Shuck keeps a trail of where you’ve been: every visit logged, snapshots when you need them, tags and search so you can find it later. Everything stays on your computer.</p>
+        <p class="hero-cta">
+          <a href="#get" class="btn btn-primary">Get the extension</a>
+        </p>
+      </div>
+    </section>
+
+    <section class="features" id="features">
+      <h2>What Shuck does</h2>
+      <div class="cards">
+        <article class="card">
+          <h3>Logs your trail</h3>
+          <p>As you browse, Shuck records each page—URL, title, and time. Your visit history is always there to search or scroll through.</p>
+        </article>
+        <article class="card">
+          <h3>Snapshots on demand</h3>
+          <p>When a page matters, hit “Snapshot this page” to save a screenshot and a hash. Tag it so you can find it later.</p>
+        </article>
+        <article class="card">
+          <h3>Export your record</h3>
+          <p>Export a JSON dump or a clean HTML report with timestamps, links, and tags—handy for notes or sharing a trail with others.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="who" id="who">
+      <h2>Who uses Shuck</h2>
+      <p class="who-lead">Researchers, journalists, analysts, and anyone who needs to retrace their steps or keep a clear record of what they’ve seen online.</p>
+      <ul class="who-list">
+        <li>Researchers & students</li>
+        <li>Journalists</li>
+        <li>Legal & compliance</li>
+        <li>Security & OSINT</li>
+        <li>Anyone who follows a lot of links</li>
+      </ul>
+    </section>
+
+    <section class="get" id="get">
+      <h2>Get Shuck</h2>
+      <p>Shuck is a Chrome extension. Install it once and use it from your toolbar. No account, no server—data stays on your machine.</p>
+      <div class="install-steps">
+        <ol>
+          <li>In Chrome, open <code>chrome://extensions</code></li>
+          <li>Turn on <strong>Developer mode</strong> (top right)</li>
+          <li>Click <strong>Load unpacked</strong></li>
+          <li>Choose the <code>extension</code> folder inside this project</li>
+        </ol>
+      </div>
+      <p class="get-note">You only do this once. After that, the Shuck icon appears in your toolbar; click it to see your trail and snapshots. No web server or internet needed for the extension to work.</p>
+      <p class="open-page">To view this page without a server: double‑click <code>index.html</code> or open it via File → Open in your browser.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p class="copyright">© <span id="year"></span> Shuck <span class="version">v1.0.0</span>. Your data, your device.</p>
+    </div>
+  </footer>
+  <script src="script.js"></script>
+</body>
+</html>

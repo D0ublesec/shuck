@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shuck – Annotate image</title>
+  <link rel="stylesheet" href="annotation.css" />
+</head>
+<body>
+  <div class="toolbar">
+    <span class="toolbar-label">Shuck</span>
+    <button type="button" id="modeHighlight" class="btn active">Highlight</button>
+    <button type="button" id="modeNumber" class="btn">Number</button>
+    <button type="button" id="modeBlur" class="btn">Blur</button>
+    <button type="button" id="modeMove" class="btn">Move</button>
+    <button type="button" id="modeCrop" class="btn">Crop</button>
+    <button type="button" id="btnUndo" class="btn btn-secondary" title="Undo">Undo</button>
+    <button type="button" id="btnClear" class="btn btn-secondary">Clear</button>
+    <span class="toolbar-colors">
+      <label class="color-label" title="Box border">Box</label>
+      <input type="color" id="colorStroke" value="#ff0000" />
+      <label class="color-label" title="Line thickness">Thickness</label>
+      <input type="range" id="strokeWidth" min="1" max="12" value="4" step="1" title="Line thickness" />
+      <span id="strokeWidthValue" class="toolbar-value">4</span>
+      <label class="color-label" title="No fill">No fill</label>
+      <input type="checkbox" id="colorNoFill" checked />
+      <label class="color-label" title="Number color">Numbers</label>
+      <input type="color" id="colorNumber" value="#ff0000" />
+      <label class="color-label" title="Number size">Size</label>
+      <input type="range" id="numberSize" min="8" max="48" value="26" step="2" title="Number size" />
+      <span id="numberSizeValue" class="toolbar-value">26</span>
+      <label class="color-label" title="Blur: left = light, right = strong">Blur</label>
+      <input type="range" id="blurIntensity" min="1" max="10" value="5" step="1" title="Blur: left = light, right = strong" />
+    </span>
+    <button type="button" id="btnSaveToCase" class="btn btn-primary">Save to current case</button>
+    <button type="button" id="btnDownload" class="btn btn-primary">Download PNG</button>
+  </div>
+  <div class="canvas-wrap">
+    <canvas id="canvas"></canvas>
+  </div>
+  <p class="hint">Highlight: drag to draw. Number: click to place 1, 2, 3… Blur: drag to blur. Move: drag existing items to reposition. Crop: drag area, then Crop again to apply. Undo: reverse last action.</p>
+  <script src="annotation.js"></script>
+</body>
+</html>
