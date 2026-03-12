@@ -1,6 +1,19 @@
 # Shuck
 
-**Your browsing trail, tagged and searchable.** A Chrome extension for capturing and organising web research: cases, full capture on every visit, notes, tags, stats, todo list, attachments, highlight selectors, and report export (JSON, HTML, CSV, Word)—all on your machine. No account, no server. Named after the [Black Shuck](https://en.wikipedia.org/wiki/Black_Shuck) Cryptid.
+**Your browsing trail, tagged and searchable.** A Chrome extension for capturing and organising web OSINT research: cases, full capture on every visit, notes, tags, stats, todo list, attachments, highlight selectors, and report export (JSON, HTML, CSV, Word)—all on your machine. No account, no server. Named after the [Black Shuck](https://en.wikipedia.org/wiki/Black_Shuck) Cryptid.
+
+**Extension View:**
+<img width="919" height="773" alt="image" src="https://github.com/user-attachments/assets/dadbe360-3ee5-43a7-aa3a-caff4344df3f" />
+
+**Dashboard Captures:**
+<img width="1528" height="763" alt="image" src="https://github.com/user-attachments/assets/6fdfdeb2-14bf-4c48-b876-33b7f03b91db" />
+
+**Dashboard Stats:**
+<img width="1526" height="757" alt="image" src="https://github.com/user-attachments/assets/19dfe94b-e41a-4cb8-81be-98e4a6f438ee" />
+
+**Dashboard Graph:**
+<img width="1527" height="763" alt="image" src="https://github.com/user-attachments/assets/7c7c9bf4-03b1-45ba-a0bb-9a023288ef3c" />
+
 
 ## Requirements
 
