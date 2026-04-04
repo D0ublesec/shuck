@@ -188,6 +188,13 @@
           </label>
           <span class="graph-filter-option-hint" title="Show same-domain links between captures (when off, only sequential flow and manual links remain).">?</span>
         </div>
+        <div class="graph-filter-option">
+          <label class="graph-filter-checkbox-label">
+            <input type="checkbox" id="graphShowLinkedNodes" />
+            <span>Show linked nodes</span>
+          </label>
+          <span class="graph-filter-option-hint" title="When a filter is active: also show nodes that are directly connected to matching nodes, even if those neighbours don't match the filter themselves.">?</span>
+        </div>
       </div>
       <div class="graph-toolbar-actions">
         <button type="button" id="graphArrangeBtn" class="btn btn-secondary" title="Arrange nodes: same-domain captures together, groups in a row, people under groups, accounts below">Arrange Nodes</button>

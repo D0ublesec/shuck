@@ -558,6 +558,8 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
       if (graphSequentialFlowEl) graphSequentialFlowEl.checked = settings.graphSequentialFlow !== false;
       const graphDomainLinksEl = document.getElementById('graphDomainLinks');
       if (graphDomainLinksEl) graphDomainLinksEl.checked = settings.graphShowDomainLinks !== false;
+      const graphShowLinkedNodesEl = document.getElementById('graphShowLinkedNodes');
+      if (graphShowLinkedNodesEl) graphShowLinkedNodesEl.checked = settings.graphShowLinkedNodes === true;
       if (document.getElementById('panel-graph')?.classList.contains('active')) renderGraph();
     }
   }
@@ -574,6 +576,13 @@ document.getElementById('graphDomainLinks')?.addEventListener('change', async fu
   const on = this.checked;
   await chrome.runtime.sendMessage({ action: 'setSettings', settings: { graphShowDomainLinks: on } });
   settings = { ...settings, graphShowDomainLinks: on };
+  if (document.getElementById('panel-graph')?.classList.contains('active')) renderGraph();
+});
+
+document.getElementById('graphShowLinkedNodes')?.addEventListener('change', async function () {
+  const on = this.checked;
+  await chrome.runtime.sendMessage({ action: 'setSettings', settings: { graphShowLinkedNodes: on } });
+  settings = { ...settings, graphShowLinkedNodes: on };
   if (document.getElementById('panel-graph')?.classList.contains('active')) renderGraph();
 });
 
@@ -943,6 +952,8 @@ async function load() {
   if (graphSequentialFlowEl) graphSequentialFlowEl.checked = settings.graphSequentialFlow !== false;
   const graphDomainLinksEl = document.getElementById('graphDomainLinks');
   if (graphDomainLinksEl) graphDomainLinksEl.checked = settings.graphShowDomainLinks !== false;
+  const graphShowLinkedNodesEl = document.getElementById('graphShowLinkedNodes');
+  if (graphShowLinkedNodesEl) graphShowLinkedNodesEl.checked = settings.graphShowLinkedNodes === true;
   const caseOpts = cases.map(c => `<option value="${escapeHtml(c.id)}" ${c.id === currentCaseId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
   caseSelect.innerHTML = caseOpts;
   if (configCaseSelect) configCaseSelect.innerHTML = caseOpts;
@@ -2003,12 +2014,80 @@ function renderGraph(options = {}) {
   });
   // When filtering, only show nodes that match; restrict edges to those between matching nodes
   if (filterActive) {
-    const allowedNodeIds = new Set([
+    const primaryNodeIds = new Set([
       ...graphCaptures.map(c => c.id),
       ...graphAccounts.map(a => a.id),
       ...graphPeople.map(p => p.id),
       ...graphGroups.map(g => g.id),
     ]);
+    let allowedNodeIds = primaryNodeIds;
+
+    if (settings && settings.graphShowLinkedNodes) {
+      // Expand to include nodes directly connected to any primary node (1-hop neighbours).
+      const adjacentIds = new Set();
+
+      // From edges already built (primary → target or target → primary)
+      edges.forEach(e => {
+        if (primaryNodeIds.has(e.from) && !primaryNodeIds.has(e.to)) adjacentIds.add(e.to);
+        if (primaryNodeIds.has(e.to) && !primaryNodeIds.has(e.from)) adjacentIds.add(e.from);
+      });
+
+      // Non-primary captures that explicitly link to a primary node (those edges aren't in the
+      // list yet because the source wasn't in graphCaptures).
+      for (const c of captures) {
+        if (primaryNodeIds.has(c.id) || (!c.imageDataUrl && !c.htmlContent)) continue;
+        for (const l of (c.links || [])) {
+          if (l.id && primaryNodeIds.has(l.id)) {
+            adjacentIds.add(c.id);
+            const man = l.manual !== false;
+            edges.push({ from: c.id, to: l.id, note: l.note || '', manual: man, edgeType: man ? 'manual' : 'auto' });
+          }
+        }
+      }
+
+      // Non-primary accounts that link to a primary node or are linked to a primary person
+      for (const acc of accounts) {
+        if (primaryNodeIds.has(acc.id)) continue;
+        let isAdjacent = false;
+        for (const l of (acc.links || [])) {
+          if (l.id && primaryNodeIds.has(l.id)) {
+            isAdjacent = true;
+            const man = l.manual !== false;
+            edges.push({ from: acc.id, to: l.id, note: l.note || '', manual: man, edgeType: man ? 'manual' : 'auto' });
+          }
+        }
+        if (acc.personId && primaryNodeIds.has(acc.personId)) {
+          isAdjacent = true;
+          edges.push({ from: acc.id, to: acc.personId, note: '', manual: true, edgeType: 'accountPerson' });
+        }
+        if (isAdjacent) adjacentIds.add(acc.id);
+      }
+
+      // Non-primary people who belong to a primary group
+      for (const p of people) {
+        if (primaryNodeIds.has(p.id)) continue;
+        for (const gid of (p.groupIds || [])) {
+          if (primaryNodeIds.has(gid)) {
+            adjacentIds.add(p.id);
+            edges.push({ from: p.id, to: gid, note: '', manual: true, edgeType: 'personGroup' });
+          }
+        }
+      }
+
+      // Non-primary groups that link to a primary group
+      for (const g of groups) {
+        if (primaryNodeIds.has(g.id)) continue;
+        for (const gid of (g.groupIds || [])) {
+          if (primaryNodeIds.has(gid)) {
+            adjacentIds.add(g.id);
+            edges.push({ from: g.id, to: gid, note: '', manual: true, edgeType: 'groupGroup' });
+          }
+        }
+      }
+
+      allowedNodeIds = new Set([...primaryNodeIds, ...adjacentIds]);
+    }
+
     nodeIds.clear();
     allowedNodeIds.forEach(id => nodeIds.add(id));
     edges = edges.filter(e => allowedNodeIds.has(e.from) && allowedNodeIds.has(e.to));

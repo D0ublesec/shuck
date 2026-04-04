@@ -509,14 +509,40 @@ document.getElementById('btnDownload').addEventListener('click', () => {
   a.click();
 });
 
+async function compressImageToJpeg(dataUrl, quality) {
+  try {
+    const image = new Image();
+    await new Promise((res, rej) => { image.onload = res; image.onerror = rej; image.src = dataUrl; });
+    const c = document.createElement('canvas');
+    c.width = image.naturalWidth;
+    c.height = image.naturalHeight;
+    c.getContext('2d').drawImage(image, 0, 0);
+    return c.toDataURL('image/jpeg', quality);
+  } catch (_) {
+    return null;
+  }
+}
+
 document.getElementById('btnSaveToCase')?.addEventListener('click', async () => {
-  const dataUrl = getAnnotatedImageDataUrl();
+  let dataUrl = getAnnotatedImageDataUrl();
   if (!dataUrl) return;
   const url = getSrc() || pendingPageUrl;
   const title = getSrc() ? 'Annotated screenshot' : (pendingPageTitle ? 'Annotated: ' + pendingPageTitle : 'Annotated image');
   const pendingKey = 'shuck_pending_annotated_' + Date.now();
   try {
-    await chrome.storage.local.set({ [pendingKey]: { imageDataUrl: dataUrl, url, title } });
+    try {
+      await chrome.storage.local.set({ [pendingKey]: { imageDataUrl: dataUrl, url, title } });
+    } catch (storageErr) {
+      // Storage quota hit (often with large PNGs). Try JPEG compression at decreasing quality.
+      let compressed = null;
+      for (const q of [0.85, 0.7, 0.5, 0.3]) {
+        compressed = await compressImageToJpeg(dataUrl, q);
+        if (compressed && compressed.length < dataUrl.length * 0.8) break;
+      }
+      if (!compressed) throw storageErr;
+      dataUrl = compressed;
+      await chrome.storage.local.set({ [pendingKey]: { imageDataUrl: dataUrl, url, title } });
+    }
     const res = await chrome.runtime.sendMessage({
       action: 'addCaptureImageOnly',
       pendingImageKey: pendingKey,

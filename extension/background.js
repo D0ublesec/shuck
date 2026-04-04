@@ -49,6 +49,8 @@ const DEFAULT_SETTINGS = {
   graphEdgeAccountPersonColor: '#ea580c',
   // Graph: show same-domain links between captures
   graphShowDomainLinks: true,
+  // Graph: when a filter is active, also show nodes linked to matching nodes
+  graphShowLinkedNodes: false,
   // Captures list sort: 'newest' | 'oldest' | 'favourites'
   captureSortOrder: 'newest',
   // Optional overrides (hex): accentColor, tagColor
@@ -283,7 +285,16 @@ async function getCaptures() {
   return data || { captures: [], nextId: 1 };
 }
 
+function isQuotaError(err) {
+  const msg = String(err?.message || err || '').toLowerCase();
+  return msg.includes('quota') || msg.includes('quotaexceeded') || msg.includes('storage full') || msg.includes('no space');
+}
+
 async function saveCaptures(data) {
+  if (!data || !Array.isArray(data.captures)) {
+    console.warn('Shuck: saveCaptures called with invalid data — aborting to protect existing data');
+    return;
+  }
   await chrome.storage.local.set({ [STORAGE_KEY]: data });
 }
 
@@ -681,41 +692,8 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
   await doPendingCaptureIfAny(activeInfo.tabId);
 });
 
-// Context menus + ensure default case exists; migrate from seekly/noctis to shuck
+// Context menus + ensure default case exists on first install
 chrome.runtime.onInstalled.addListener(async () => {
-  const all = await chrome.storage.local.get(null);
-  const hasShuck = all.shuck_captures !== undefined;
-  const hasNoctis = all.noctis_captures !== undefined;
-  const hasSeekly = all.seekly_captures !== undefined;
-  if (!hasShuck) {
-    const migrate = {};
-    if (hasNoctis) {
-      if (all.noctis_captures !== undefined) migrate.shuck_captures = all.noctis_captures;
-      if (all.noctis_cases !== undefined) migrate.shuck_cases = all.noctis_cases;
-      if (all.noctis_current_case_id !== undefined) migrate.shuck_current_case_id = all.noctis_current_case_id;
-      if (all.noctis_settings !== undefined) migrate.shuck_settings = all.noctis_settings;
-      if (all.noctis_accounts_by_case !== undefined) migrate.shuck_accounts_by_case = all.noctis_accounts_by_case;
-      if (all.noctis_people_by_case !== undefined) migrate.shuck_people_by_case = all.noctis_people_by_case;
-      if (all.noctis_groups_by_case !== undefined) migrate.shuck_groups_by_case = all.noctis_groups_by_case;
-      if (all.noctis_selectors !== undefined) migrate.shuck_selectors = all.noctis_selectors;
-      if (all.noctis_case_config !== undefined) migrate.shuck_case_config = all.noctis_case_config;
-      if (all.noctis_global_tags !== undefined) migrate.shuck_global_tags = all.noctis_global_tags;
-      if (all.noctis_last_capture_by_tab !== undefined) migrate.shuck_last_capture_by_tab = all.noctis_last_capture_by_tab;
-      if (all.noctis_troubleshoot_log !== undefined) migrate.shuck_troubleshoot_log = all.noctis_troubleshoot_log;
-      if (all.noctis_todo_by_case !== undefined) migrate.shuck_todo_by_case = all.noctis_todo_by_case;
-    } else if (hasSeekly) {
-      if (all.seekly_captures !== undefined) migrate.shuck_captures = all.seekly_captures;
-      if (all.seekly_cases !== undefined) migrate.shuck_cases = all.seekly_cases;
-      if (all.seekly_current_case_id !== undefined) migrate.shuck_current_case_id = all.seekly_current_case_id;
-      if (all.seekly_settings !== undefined) migrate.shuck_settings = all.seekly_settings;
-      if (all.seekly_accounts_by_case !== undefined) migrate.shuck_accounts_by_case = all.seekly_accounts_by_case;
-      if (all.seekly_selectors !== undefined) migrate.shuck_selectors = all.seekly_selectors;
-      if (all.seekly_case_config !== undefined) migrate.shuck_case_config = all.seekly_case_config;
-      if (all.seekly_global_tags !== undefined) migrate.shuck_global_tags = all.seekly_global_tags;
-      if (all.seekly_todo_by_case !== undefined) migrate.shuck_todo_by_case = all.seekly_todo_by_case;
-    }
-    if (Object.keys(migrate).length) await chrome.storage.local.set(migrate);
-  }
   const { [CASES_KEY]: list } = await chrome.storage.local.get(CASES_KEY);
   if (!list || list.length === 0) {
     await chrome.storage.local.set({ [CASES_KEY]: [{ id: 'default', name: 'Default case', createdAt: new Date().toISOString() }] });
@@ -889,6 +867,22 @@ async function doCapture(tab, caseId, noteText, updateId, isManual = false) {
     const data = await getCaptures();
     const urlNorm = normalizeUrlForCompare(tab.url);
 
+    const trySaveCaptures = async (captureData, captureObj) => {
+      try {
+        await saveCaptures(captureData);
+      } catch (saveErr) {
+        if (isQuotaError(saveErr) && captureObj && captureObj.imageDataUrl) {
+          captureObj.imageDataUrl = null;
+          const idx = captureData.captures.findIndex(c => c.id === captureObj.id);
+          if (idx >= 0) captureData.captures[idx] = captureObj;
+          await saveCaptures(captureData);
+          return captureObj;
+        }
+        throw saveErr;
+      }
+      return captureObj;
+    };
+
     if (updateId) {
       const idx = data.captures.findIndex(c => c.id === updateId);
       if (idx >= 0) {
@@ -909,7 +903,7 @@ async function doCapture(tab, caseId, noteText, updateId, isManual = false) {
         };
         data.captures.splice(idx, 1);
         data.captures.unshift(updated);
-        await saveCaptures(data);
+        await trySaveCaptures(data, updated);
         await appendTroubleshootLog({ type: 'capture_done', url: tab.url, caseId, id: updateId });
         return { id: updateId, capture: updated };
       }
@@ -938,7 +932,7 @@ async function doCapture(tab, caseId, noteText, updateId, isManual = false) {
         };
         data.captures.splice(idx, 1);
         data.captures.unshift(updated);
-        await saveCaptures(data);
+        await trySaveCaptures(data, updated);
         await appendTroubleshootLog({ type: 'capture_done', url: tab.url, caseId, id: existingByUrl.id });
         return { id: existingByUrl.id, capture: updated };
       }
@@ -967,7 +961,7 @@ async function doCapture(tab, caseId, noteText, updateId, isManual = false) {
       captureSource: isManual ? 'manual' : 'auto',
     };
     data.captures.unshift(capture);
-    await saveCaptures(data);
+    await trySaveCaptures(data, capture);
     await appendTroubleshootLog({ type: 'capture_done', url: tab.url, caseId, id });
     return { id, capture };
   } catch (err) {
@@ -1124,7 +1118,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           captureSource: 'annotation',
         };
         data.captures.unshift(capture);
-        await saveCaptures(data);
+        try {
+          await saveCaptures(data);
+        } catch (saveErr) {
+          if (isQuotaError(saveErr) && capture.imageDataUrl) {
+            // Storage quota exceeded — retry without the screenshot to preserve the capture entry.
+            const captureNoImage = { ...capture, imageDataUrl: null };
+            data.captures[0] = captureNoImage;
+            await saveCaptures(data);
+            reply({ id, capture: captureNoImage });
+            return;
+          }
+          throw saveErr;
+        }
         if (linkToCaptureId) {
           const caseIdForLink = caseId || 'default';
           const original = data.captures.find((c) => c.id === linkToCaptureId && (c.caseId || 'default') === caseIdForLink);
@@ -1134,7 +1140,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               const idx = data.captures.findIndex((c) => c.id === linkToCaptureId && (c.caseId || 'default') === caseIdForLink);
               if (idx >= 0) {
                 data.captures[idx] = { ...data.captures[idx], links: [...existingLinks, { type: 'capture', id }] };
-                await saveCaptures(data);
+                try { await saveCaptures(data); } catch (_) {}
               }
             }
           }
@@ -1192,18 +1198,37 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const list = await getCases();
       if (!list.some(x => x.id === caseId)) return sendResponse({ error: 'Case not found' });
       const next = list.filter(x => x.id !== caseId);
-      await chrome.storage.local.set({ [CASES_KEY]: next });
-      // Delete all captures for this case (full data deletion)
-      const data = await getCaptures();
-      const before = (data.captures || []).length;
-      data.captures = (data.captures || []).filter(c => (c.caseId || 'default') !== caseId);
-      if (data.captures.length !== before) await saveCaptures(data);
+
+      // Delete associated data BEFORE removing the case from the list.
+      // If the worker crashes mid-way the case will still appear in the UI so the user can retry.
+      const captureData = await getCaptures();
+      const before = (captureData.captures || []).length;
+      captureData.captures = (captureData.captures || []).filter(c => (c.caseId || 'default') !== caseId);
+      if (captureData.captures.length !== before) await saveCaptures(captureData);
+
       const { [CASE_CONFIG_KEY]: allConfig = {} } = await chrome.storage.local.get(CASE_CONFIG_KEY);
       delete allConfig[caseId];
       await chrome.storage.local.set({ [CASE_CONFIG_KEY]: allConfig });
-      const { [ACCOUNTS_KEY]: byCase = {} } = await chrome.storage.local.get(ACCOUNTS_KEY);
-      delete byCase[caseId];
-      await chrome.storage.local.set({ [ACCOUNTS_KEY]: byCase });
+
+      const { [ACCOUNTS_KEY]: accountsByCase = {} } = await chrome.storage.local.get(ACCOUNTS_KEY);
+      delete accountsByCase[caseId];
+      await chrome.storage.local.set({ [ACCOUNTS_KEY]: accountsByCase });
+
+      const { [PEOPLE_KEY]: peopleByCase = {} } = await chrome.storage.local.get(PEOPLE_KEY);
+      delete peopleByCase[caseId];
+      await chrome.storage.local.set({ [PEOPLE_KEY]: peopleByCase });
+
+      const { [GROUPS_KEY]: groupsByCase = {} } = await chrome.storage.local.get(GROUPS_KEY);
+      delete groupsByCase[caseId];
+      await chrome.storage.local.set({ [GROUPS_KEY]: groupsByCase });
+
+      const { [TODO_BY_CASE_KEY]: todoByCase = {} } = await chrome.storage.local.get(TODO_BY_CASE_KEY);
+      delete todoByCase[caseId];
+      await chrome.storage.local.set({ [TODO_BY_CASE_KEY]: todoByCase });
+
+      // Remove from cases list last — once this write completes the case is fully gone.
+      await chrome.storage.local.set({ [CASES_KEY]: next });
+
       const current = await getCurrentCaseId();
       if (current === caseId) {
         await setCurrentCaseId(next.length ? next[0].id : '');
@@ -1365,8 +1390,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           existing.captures.push({ ...c, id: randomUuid(), caseId: c.caseId || 'default', attachments: c.attachments || [] });
         }
         await saveCaptures(existing);
-      } else if (!merge && data.captures) {
+      } else if (!merge && Array.isArray(data.captures) && data.captures.length > 0) {
+        // Only allow a full replace when the import file actually contains captures;
+        // an empty array would silently wipe everything, so we refuse it here.
         await saveCaptures({ captures: data.captures.map(c => ({ ...c, attachments: c.attachments || [] })), nextId: data.nextId || data.captures.length + 1 });
+      } else if (!merge && Array.isArray(data.captures) && data.captures.length === 0) {
+        return sendResponse({ error: 'Import file contains no captures — refusing full replace to protect existing data.' });
       }
       sendResponse({ ok: true });
     })();
