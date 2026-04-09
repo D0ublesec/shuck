@@ -2,6 +2,12 @@
 
 const dashboardUrl = chrome.runtime.getURL('dashboard.html');
 
+// Read captures directly from storage to avoid the 64MiB chrome.runtime.sendMessage limit.
+async function getLocalCaptures() {
+  const result = await chrome.storage.local.get('shuck_captures');
+  return result['shuck_captures'] || { captures: [], nextId: 1 };
+}
+
 const THEME_HEX = { purple: '#6b21a8', teal: '#0d5c4b', blue: '#1d4ed8', slate: '#475569' };
 
 const DEFAULT_TAGS = ['Evidence', 'Source', 'Person', 'Account', 'Follow-up', 'Important', 'Lead', 'Primary source', 'Profile', 'Target', 'Contact', 'Social', 'Domain', 'IP', 'Verified', 'To review'];
@@ -897,7 +903,7 @@ async function load() {
   const curCase = await new Promise(r => chrome.runtime.sendMessage({ action: 'getCurrentCaseId' }, r));
   const caseId = curCase || 'default';
   const [data, caseList, sets, selList, todoListResp, accountsResp, peopleResp, groupsResp, caseConfig, globalTags] = await Promise.all([
-    new Promise(r => chrome.runtime.sendMessage({ action: 'getCaptures' }, r)),
+    getLocalCaptures(),
     new Promise(r => chrome.runtime.sendMessage({ action: 'getCases' }, r)),
     new Promise(r => chrome.runtime.sendMessage({ action: 'getSettings' }, r)),
     new Promise(r => chrome.runtime.sendMessage({ action: 'getSelectors', caseId }, r)),
@@ -4388,7 +4394,7 @@ importFile.addEventListener('change', async (e) => {
       else merge = true;
     }
   } else {
-    const caseCaptures = (await chrome.runtime.sendMessage({ action: 'getCaptures' })).captures?.filter(c => (c.caseId || 'default') === currentCaseId) || [];
+    const caseCaptures = (await getLocalCaptures()).captures?.filter(c => (c.caseId || 'default') === currentCaseId) || [];
     if (caseCaptures.length > 0) {
       merge = await showConfirmModal('Import', 'Merge captures with current case? (Cancel = replace current case captures)');
     }
@@ -4961,7 +4967,7 @@ if (exportBtn && exportDropdown) {
       };
       const dateStr = ts();
       if (format === 'json') {
-        const data = await chrome.runtime.sendMessage({ action: 'getCaptures' });
+        const data = await getLocalCaptures();
         const caseCaptures = (data.captures || []).filter(c => (c.caseId || 'default') === currentCaseId);
         const [caseConfig, globalSettings] = await Promise.all([
           chrome.runtime.sendMessage({ action: 'getCaseConfig', caseId: currentCaseId }),

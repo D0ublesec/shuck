@@ -1,5 +1,11 @@
 // Shuck - Popup UI
 
+// Read captures directly from storage to avoid the 64MiB chrome.runtime.sendMessage limit.
+async function getLocalCaptures() {
+  const result = await chrome.storage.local.get('shuck_captures');
+  return result['shuck_captures'] || { captures: [], nextId: 1 };
+}
+
 const searchEl = document.getElementById('search');
 const tagFilterEl = document.getElementById('tagFilter');
 const captureBtn = document.getElementById('captureBtn');
@@ -189,7 +195,7 @@ async function load() {
   const curCase = await new Promise(r => chrome.runtime.sendMessage({ action: 'getCurrentCaseId' }, r));
   const caseId = curCase || 'default';
   const [data, caseList, sets, selList, caseConfig] = await Promise.all([
-    new Promise(r => chrome.runtime.sendMessage({ action: 'getCaptures' }, r)),
+    getLocalCaptures(),
     new Promise(r => chrome.runtime.sendMessage({ action: 'getCases' }, r)),
     new Promise(r => chrome.runtime.sendMessage({ action: 'getSettings' }, r)),
     new Promise(r => chrome.runtime.sendMessage({ action: 'getSelectors', caseId }, r)),
